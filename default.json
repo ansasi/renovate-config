@@ -1,0 +1,20 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":pinDevDependencies",
+    "helpers:pinGitHubActionDigests",
+    "github>ansasi/docker_containers//.renovate/autoMerge.json5",
+    "github>ansasi/docker_containers//.renovate/labels.json5",
+    "github>ansasi/docker_containers//.renovate/semanticCommits.json5",
+    ":automergeBranch",
+    ":dependencyDashboard",
+    ":disableRateLimiting",
+    ":timezone(Europe/Madrid)"
+  ],
+  "dependencyDashboardTitle": "Renovate Dashboard 🤖",
+  "suppressNotifications": [
+    "prEditedNotification",
+    "prIgnoreNotification"
+  ]
+}
