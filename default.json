@@ -12,7 +12,7 @@
     ":disableRateLimiting",
     ":timezone(Europe/Madrid)"
   ],
-  "dependencyDashboardTitle": "Renovate Dashboard 🤖",
+  "dependencyDashboardTitle": "Renovate Dashboard 🤖🛠️",
   "suppressNotifications": [
     "prEditedNotification",
     "prIgnoreNotification"
