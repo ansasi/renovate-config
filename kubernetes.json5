@@ -1,0 +1,15 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  // The kubernetes, argocd and flux managers have no (useful) default file patterns.
+  // They only extract from files that look like their manifests, so plain YAML in these folders is ignored.
+  // Repos with another layout can add their own patterns, they are merged with these.
+  kubernetes: {
+    managerFilePatterns: ["/(^|/)(k8s|kubernetes|clusters?|manifests|apps|infrastructure)/.+\\.ya?ml$/"],
+  },
+  argocd: {
+    managerFilePatterns: ["/(^|/)(k8s|kubernetes|clusters?|manifests|apps|infrastructure)/.+\\.ya?ml$/"],
+  },
+  flux: {
+    managerFilePatterns: ["/(^|/)(k8s|kubernetes|clusters?|manifests|apps|infrastructure)/.+\\.ya?ml$/"],
+  },
+}
