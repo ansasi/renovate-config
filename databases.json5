@@ -1,0 +1,53 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  // Must be extended AFTER autoMerge.json5 so these rules override it.
+  packageRules: [
+    {
+      description: "Databases: label, wait longer and keep patch separate from minor so patches can still automerge",
+      matchDatasources: ["docker"],
+      matchPackageNames: [
+        "/(^|/)(postgres|postgresql|postgis|pgvector|timescaledb|timescaledb-ha)$/",
+        "/(^|/)(mariadb|mysql|percona-server|mssql/server)$/",
+        "/(^|/)(mongo|mongodb-community-server|percona-server-mongodb)$/",
+        "/(^|/)(redis|redis-stack-server|valkey)$/",
+        "/(^|/)(elasticsearch|opensearch|clickhouse-server|influxdb|cassandra|couchdb|neo4j)$/",
+      ],
+      addLabels: ["database"],
+      separateMinorPatch: true,
+      minimumReleaseAge: "7 days",
+    },
+    {
+      description: "Databases: minor bumps are new release series (MariaDB 11.4 -> 11.8, MySQL 8.0 -> 8.4, Mongo 7.0 -> 7.3...), review them",
+      matchDatasources: ["docker"],
+      matchPackageNames: [
+        "/(^|/)(postgres|postgresql|postgis|pgvector|timescaledb|timescaledb-ha)$/",
+        "/(^|/)(mariadb|mysql|percona-server|mssql/server)$/",
+        "/(^|/)(mongo|mongodb-community-server|percona-server-mongodb)$/",
+        "/(^|/)(redis|redis-stack-server|valkey)$/",
+        "/(^|/)(elasticsearch|opensearch|clickhouse-server|influxdb|cassandra|couchdb|neo4j)$/",
+      ],
+      matchUpdateTypes: ["minor"],
+      automerge: false,
+    },
+    {
+      description: "PostgreSQL: X.Y -> X.Z is a bug-fix release with the same on-disk format, safe to automerge",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["/(^|/)(postgres|postgresql|postgis)$/"],
+      matchUpdateTypes: ["minor"],
+      automerge: true,
+    },
+    {
+      description: "Databases: majors need a data migration (dump/restore, pg_upgrade...), only open a PR when ticked in the dashboard",
+      matchDatasources: ["docker"],
+      matchPackageNames: [
+        "/(^|/)(postgres|postgresql|postgis|pgvector|timescaledb|timescaledb-ha)$/",
+        "/(^|/)(mariadb|mysql|percona-server|mssql/server)$/",
+        "/(^|/)(mongo|mongodb-community-server|percona-server-mongodb)$/",
+        "/(^|/)(redis|redis-stack-server|valkey)$/",
+        "/(^|/)(elasticsearch|opensearch|clickhouse-server|influxdb|cassandra|couchdb|neo4j)$/",
+      ],
+      matchUpdateTypes: ["major"],
+      dependencyDashboardApproval: true,
+    },
+  ],
+}
