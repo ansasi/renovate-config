@@ -1,3 +1,14 @@
+// Stricter update policy for database images. See README.md for the full reasoning.
+//
+// Why: an app update that breaks is fixed by reverting the PR. A database update often
+// rewrites its data on disk when it starts, so reverting the image tag leaves an old
+// version that can't read the data, and only a backup restore gets you back.
+// For most databases a "minor" bump (MariaDB 11.4 -> 11.8, MySQL 8.0 -> 8.4) is a new
+// release series, so only patches are automerged. PostgreSQL is the exception: its
+// X.Y -> X.Z releases are bug fixes with the same on-disk format.
+//
+// The policy lives here, shared by every repo. App-specific limits (e.g. the highest
+// MariaDB version an app supports) belong in that app's repo.
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   // Must be extended AFTER autoMerge.json5 so these rules override it.
