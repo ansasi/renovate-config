@@ -1,0 +1,21 @@
+// No automerge for dependencies with a date version (CalVer: 2026.02.07, 2026-02-07, 2025.10.1...).
+//
+// Why: automerge relies on the update type. With SemVer (1.3.2) a minor or patch bump promises
+// no breaking change. A date version only says when it was released, so Renovate still calls
+// 2026.02.07 -> 2026.03.01 a "minor" update even if it breaks everything. These updates get a PR
+// that is merged by hand.
+//
+// A repo can turn automerge back on for one package with its own packageRules (they run after
+// these), or drop the whole preset with ignorePresets. See README.md.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  // Must be extended AFTER autoMerge.json5 and databases.json5 so this rule overrides them.
+  packageRules: [
+    {
+      description: "Date versions (YYYY.MM.DD, YYYY-MM-DD, YYYY.M.x): the update type means nothing, review them",
+      matchCurrentVersion: "/^v?20\\d{2}[.-](0?[1-9]|1[0-2])([.-]|$)/",
+      addLabels: ["calver"],
+      automerge: false,
+    },
+  ],
+}
