@@ -20,6 +20,7 @@ Use it from a repo's `renovate.json`:
 | `labels.json5` | Adds a `type/<update type>` label |
 | `semanticCommits.json5` | Conventional commit messages and scopes (`container`, `helm`, `github-action`…) |
 | `databases.json5` | Stricter policy for database images, see below |
+| `calver.json5` | No automerge for date versions (`2026.02.07`), see below |
 | `kubernetes.json5` | File patterns for the `kubernetes`, `argocd` and `flux` managers |
 
 ## Databases
@@ -76,6 +77,38 @@ patches.
 Pin full versions in compose files (`postgres:16.4`, not `postgres:16`). With a short
 tag, Renovate can only suggest majors, and the updates in between happen silently on
 `docker compose pull`.
+
+## Date versions (CalVer)
+
+Dependencies whose current version starts with a date (`2026.02.07`, `2026-02-07`,
+`v2026.02.07`, `2025.10.1`…) are never automerged. They get a PR with the `calver` label,
+merged by hand.
+
+Automerge trusts the update type: with SemVer (`1.3.2`) a minor or patch promises no
+breaking change. A date only says when the release came out, yet Renovate still calls
+`2026.02.07 → 2026.03.01` a "minor" update and would automerge it.
+
+To get automerge back in one repo, add a rule to its `renovate.json`. Repo rules run after
+the presets, so they win:
+
+```json5
+{
+    packageRules: [
+        // Only this package
+        { matchPackageNames: ["ghcr.io/home-assistant/home-assistant"], automerge: true },
+        // Or every date version in this repo
+        { matchCurrentVersion: "/^v?20\\d{2}[.-]/", automerge: true },
+    ],
+}
+```
+
+Or drop the preset completely:
+
+```json
+{
+    "ignorePresets": ["github>ansasi/renovate-config:calver.json5"]
+}
+```
 
 ## Kubernetes
 
