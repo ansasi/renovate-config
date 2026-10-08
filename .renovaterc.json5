@@ -1,0 +1,8 @@
+// Renovate config for this repo itself: the GitHub Actions and the Renovate version used to
+// validate the presets.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: ["local>ansasi/renovate-config"],
+  // README.md shows "# renovate:" examples, they are not real versions to update.
+  ignorePaths: ["README.md"],
+}
