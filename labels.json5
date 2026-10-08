@@ -9,6 +9,13 @@
       matchUpdateTypes: ["minor"],
       labels: ["type/minor"],
     },
+    // Must stay below the plain minor rule so this one wins.
+    {
+      description: "0.x versions: a minor bump (0.4 -> 0.5) can break things, label it as a major",
+      matchUpdateTypes: ["minor"],
+      matchCurrentVersion: "/^v?0\\./",
+      labels: ["type/major"],
+    },
     {
       matchUpdateTypes: ["patch"],
       labels: ["type/patch"],

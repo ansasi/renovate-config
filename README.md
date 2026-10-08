@@ -11,17 +11,21 @@ Use it from a repo's `renovate.json`:
 }
 ```
 
+`local>ansasi/renovate-config` works too. The presets reference each other with relative
+paths (`./autoMerge.json5`), so they are always read from the same place as `default.json`.
+
 ## Presets
 
 | File | What it does |
 |---|---|
-| `default.json` | Entry point, extends everything below |
-| `autoMerge.json5` | Automerges minor, patch and digest updates after 3 days (branch automerge, no PR) |
-| `labels.json5` | Adds a `type/<update type>` label |
+| `default.json` | Entry point, extends everything below, see [Other settings](#other-settings) |
+| `autoMerge.json5` | Automerges minor, patch and digest updates after 3 days (branch automerge, no PR), except 0.x minors |
+| `labels.json5` | Adds a `type/<update type>` label (`type/major` for 0.x minors) |
 | `semanticCommits.json5` | Conventional commit messages and scopes (`container`, `helm`, `github-action`…) |
 | `databases.json5` | Stricter policy for database images, see below |
 | `calver.json5` | No automerge for date versions (`2026.02.07`), see below |
 | `kubernetes.json5` | File patterns for the `kubernetes`, `argocd` and `flux` managers |
+| `annotated.json5` | Updates any version that has a `# renovate:` comment above it, see below |
 
 ## Databases
 
@@ -106,9 +110,13 @@ Or drop the preset completely:
 
 ```json
 {
-    "ignorePresets": ["github>ansasi/renovate-config:calver.json5"]
+    "ignorePresets": ["local>ansasi/renovate-config//calver.json5"]
 }
 ```
+
+Use the same prefix as in your `extends` (`local>` or `github>`), followed by `//` and the file
+name. Renovate turns the relative paths in `default.json` into that form before it checks
+`ignorePresets`, so `./calver.json5` or the old `:calver.json5` form won't match.
 
 ## Kubernetes
 
@@ -123,3 +131,55 @@ ignored. A repo with another layout can add its own patterns, which are merged w
     "kubernetes": { "managerFilePatterns": ["/deploy/.+\\.ya?ml$/"] }
 }
 ```
+
+## 0.x versions
+
+Under SemVer, anything below 1.0 can break at any time, so `0.4 → 0.5` is really a major
+update. 0.x minor updates are not automerged and get the `type/major` label. 0.x patches
+(`0.4.1 → 0.4.2`) are still automerged.
+
+## Annotated versions
+
+Some versions live where no Renovate manager looks: a Dockerfile `ARG`, a `.env` file, a shell
+script, a Helm value. Put a comment on the line above to tell Renovate where to find updates:
+
+```dockerfile
+# renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
+ARG KUSTOMIZE_VERSION=v5.4.3
+```
+
+```yaml
+app:
+  # renovate: datasource=docker depName=ghcr.io/home-operations/radarr
+  tag: 5.8.3.8933
+```
+
+- `datasource` and `depName` are required, then optionally `packageName=` (when the name to
+  look up differs from `depName`) and `versioning=`, in that order.
+- The version is the value after the first `:` or `=` on the next line. Quotes and YAML
+  anchors (`version: &v "1.2.3"`) are fine.
+- These updates follow the same rules as the rest: automerge, labels, databases, CalVer.
+
+## Other settings
+
+Set in `default.json`:
+
+- **`minimumReleaseAgeBehaviour: timestamp-optional`.** Since Renovate 42, an update without a
+  release date never passes `minimumReleaseAge` and is held forever. GHCR, Quay and ECR don't
+  publish release dates, so without this setting their images would never update. The
+  downside: those images skip the 3-day (or 7-day, for databases) wait.
+- **`abandonments:recommended`.** Packages with no release for a year are flagged as abandoned
+  in the Dependency Dashboard.
+- **`:configMigration`.** When a repo's own Renovate config uses outdated options, Renovate
+  opens a PR to update it.
+- **`helpers:pinGitHubActionDigestsToSemver`.** GitHub Actions are pinned to a digest, and the
+  comment shows the full version (`# v4.2.1`) instead of the short tag (`# v4`).
+- `:pinDevDependencies`, `:timezone(Europe/Madrid)`, no Renovate comments when a PR is edited or
+  closed (`suppressNotifications`).
+
+## Credits
+
+This config started as a fork of
+[home-operations/renovate-config](https://github.com/home-operations/renovate-config).
+Thanks to the Home Operations folks for the original presets. The `LICENSE` keeps their
+MIT copyright notice.

@@ -1,0 +1,22 @@
+// Updates versions that no manager knows about, as long as a comment on the line above says where
+// to look them up:
+//
+//   # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize
+//   KUSTOMIZE_VERSION=v5.4.3
+//
+// Works in any file (Dockerfile ARG/ENV, .env, shell, YAML/Helm values...): the version is the
+// value after the first ":" or "=" on the next line. packageName and versioning are optional,
+// in that order. See README.md.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  customManagers: [
+    {
+      customType: "regex",
+      description: "Versions with a renovate comment (datasource, depName) on the line above",
+      managerFilePatterns: ["/.*/"],
+      matchStrings: [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?[^\\n]*\\n[^\\n:=]*[:=]\\s*(?:&\\S+\\s+)?[\"']?(?<currentValue>[^\"'\\s]+)[\"']?",
+      ],
+    },
+  ],
+}

@@ -8,5 +8,11 @@
       automergeType: "branch",
       minimumReleaseAge: "3 days",
     },
+    {
+      description: "0.x versions: a minor bump (0.4 -> 0.5) can break things, review it",
+      matchUpdateTypes: ["minor"],
+      matchCurrentVersion: "/^v?0\\./",
+      automerge: false,
+    },
   ],
 }
