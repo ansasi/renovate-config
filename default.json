@@ -10,6 +10,7 @@
     "./semanticCommits.json5",
     "./databases.json5",
     "./calver.json5",
+    "./supplyChain.json5",
     "./kubernetes.json5",
     "./annotated.json5",
     ":automergeBranch",

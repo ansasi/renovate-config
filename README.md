@@ -24,6 +24,7 @@ paths (`./autoMerge.json5`), so they are always read from the same place as `def
 | `semanticCommits.json5` | Conventional commit messages and scopes (`container`, `helm`, `github-action`…) |
 | `databases.json5` | Stricter policy for database images, see below |
 | `calver.json5` | No automerge for date versions (`2026.02.07`), see below |
+| `supplyChain.json5` | 3-day wait for every npm, PyPI, crates.io and Go update, see below |
 | `kubernetes.json5` | File patterns for the `kubernetes`, `argocd` and `flux` managers |
 | `annotated.json5` | Updates any version that has a `# renovate:` comment above it, see below |
 
@@ -132,6 +133,44 @@ ignored. A repo with another layout can add its own patterns, which are merged w
 }
 ```
 
+## Package registries: 3-day wait
+
+Every update from npm, PyPI, crates.io and Go modules waits until the new version is 3 days
+old, majors included. Renovate proposes the newest version that is at least 3 days old, and
+doesn't create a branch for anything newer.
+
+### Why
+
+These registries have shipped malware many times, usually when an attacker takes over a
+maintainer's account and publishes a poisoned version of a popular package (`event-stream`,
+`ua-parser-js`, `ultralytics`, the 2025 `chalk`/`debug` and "Shai-Hulud" npm worms...). Most are
+spotted and pulled within hours or a few days. Renovate is exactly what would pull such a
+version in quickly. Even a branch that never gets merged is a risk, because CI installs the
+package and npm/PyPI install scripts run there, with the CI secrets.
+
+### How
+
+- npm, PyPI and crates.io use Renovate's own `security:minimumReleaseAge*` presets. Go has no
+  built-in preset, so it has its own rule.
+- For npm, Renovate also passes `--before=<3 days ago>` to npm when it updates the lock file, so
+  new versions of *indirect* dependencies are held too.
+- A version with no release date is held, not raised (`timestamp-required`), the opposite of
+  the Docker setting in [Other settings](#other-settings). All four registries publish release
+  dates, so this only matters for a private mirror that doesn't.
+- When every new version is still too young, the update is listed under "Pending Status
+  Checks" in the Dependency Dashboard. Tick it to get it right away, for example for a
+  security fix you need now.
+
+### Not covered
+
+- **Pin updates** (`:pinDevDependencies` turns `^1.2.0` into `1.2.3`) and lock file maintenance
+  skip the wait. Renovate adds a warning to those PRs.
+- **Indirect dependencies outside npm.** Only npm (and Poetry) are told about the wait. Other
+  lock files can still resolve a brand-new indirect dependency. If your package manager has its
+  own setting (pnpm `minimumReleaseAge`, Yarn `npmMinimalAgeGate`, uv `exclude-newer`), set it
+  too.
+- **Installs outside Renovate:** an `npm install` you run by hand or in CI without a lock file.
+
 ## 0.x versions
 
 Under SemVer, anything below 1.0 can break at any time, so `0.4 → 0.5` is really a major
@@ -167,7 +206,8 @@ Set in `default.json`:
 - **`minimumReleaseAgeBehaviour: timestamp-optional`.** Since Renovate 42, an update without a
   release date never passes `minimumReleaseAge` and is held forever. GHCR, Quay and ECR don't
   publish release dates, so without this setting their images would never update. The
-  downside: those images skip the 3-day (or 7-day, for databases) wait.
+  downside: those images skip the 3-day (or 7-day, for databases) wait. Package registries are
+  the exception, see [above](#package-registries-3-day-wait).
 - **`abandonments:recommended`.** Packages with no release for a year are flagged as abandoned
   in the Dependency Dashboard.
 - **`:configMigration`.** When a repo's own Renovate config uses outdated options, Renovate
