@@ -14,6 +14,16 @@ Use it from a repo's `renovate.json`:
 `local>ansasi/renovate-config` works too. The presets reference each other with relative
 paths (`./autoMerge.json5`), so they are always read from the same place as `default.json`.
 
+## Requirements
+
+**Renovate 44 or newer** (tested with 44.145.1). Older versions stop with a configuration
+error in every repo that uses these presets: Renovate 39, for example, doesn't know relative
+preset paths, `managerFilePatterns`, `minimumReleaseAgeBehaviour` or `abandonments:recommended`.
+
+The [Validate](.github/workflows/validate.yaml) workflow checks every preset on each push and
+PR. Keep its `RENOVATE_VERSION` on the same version as the self-hosted runner, so a preset that
+passes here also loads there.
+
 ## Presets
 
 | File | What it does |
@@ -27,6 +37,7 @@ paths (`./autoMerge.json5`), so they are always read from the same place as `def
 | `supplyChain.json5` | 3-day wait for every npm, PyPI, crates.io and Go update, see below |
 | `kubernetes.json5` | File patterns for the `kubernetes`, `argocd` and `flux` managers |
 | `annotated.json5` | Updates any version that has a `# renovate:` comment above it, see below |
+| `.renovaterc.json5` | Renovate config for this repo itself (not a preset) |
 
 ## Databases
 
@@ -195,8 +206,12 @@ app:
 
 - `datasource` and `depName` are required, then optionally `packageName=` (when the name to
   look up differs from `depName`) and `versioning=`, in that order.
+- The comment must start its own line (indenting is fine). Examples inside other comments, like
+  `//   # renovate: ...` in a JSON5 file, are ignored.
 - The version is the value after the first `:` or `=` on the next line. Quotes and YAML
   anchors (`version: &v "1.2.3"`) are fine.
+- If the GitHub tags are `v1.2.3` and your value is `1.2.3`, Renovate keeps it without the `v`
+  (with the default versioning).
 - These updates follow the same rules as the rest: automerge, labels, databases, CalVer.
 
 ## Other settings
