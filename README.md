@@ -29,7 +29,7 @@ passes here also loads there.
 | File | What it does |
 |---|---|
 | `default.json` | Entry point, extends everything below, see [Other settings](#other-settings) |
-| `autoMerge.json5` | Automerges minor, patch and digest updates after 3 days (branch automerge, no PR), except 0.x minors |
+| `autoMerge.json5` | Automerges minor, patch and digest updates after 3 days, except 0.x minors, see [Automerge](#automerge) |
 | `labels.json5` | Adds a `type/<update type>` label (`type/major` for 0.x minors) |
 | `semanticCommits.json5` | Conventional commit messages and scopes (`container`, `helm`, `github-action`…) |
 | `databases.json5` | Stricter policy for database images, see below |
@@ -38,6 +38,19 @@ passes here also loads there.
 | `kubernetes.json5` | File patterns for the `kubernetes`, `argocd` and `flux` managers |
 | `annotated.json5` | Updates any version that has a `# renovate:` comment above it, see below |
 | `.renovaterc.json5` | Renovate config for this repo itself (not a preset) |
+
+## Automerge
+
+Automerged updates go through a PR that GitHub merges once the required checks pass
+(`:automergePr`). Renovate can also push straight to the base branch without a PR
+(`:automergeBranch`), but in practice it opened a PR every time anyway: every Renovate update
+in `docker_containers` reached the base branch through a PR, most likely because the branch
+requires PRs and refuses the direct push. With a PR, your CI runs before the merge, as long as
+the workflow runs on `pull_request`.
+
+GitHub's auto-merge only waits for **required** checks. To make a lint job block a bad
+update, mark it as required in the branch protection rules (only for a workflow that runs on
+every PR, not one limited to some `paths`).
 
 ## Databases
 

@@ -13,9 +13,8 @@
     "./supplyChain.json5",
     "./kubernetes.json5",
     "./annotated.json5",
-    ":automergeBranch",
+    ":automergePr",
     ":configMigration",
-    ":dependencyDashboard",
     ":disableRateLimiting",
     ":timezone(Europe/Madrid)"
   ],
