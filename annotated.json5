@@ -6,7 +6,8 @@
 //
 // Works in any file (Dockerfile ARG/ENV, .env, shell, YAML/Helm values...): the version is the
 // value after the first ":" or "=" on the next line. packageName and versioning are optional,
-// in that order. See README.md.
+// in that order. The comment must start its own line, so examples inside other comments
+// (like this one) are ignored. See README.md.
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   customManagers: [
@@ -15,7 +16,7 @@
       description: "Versions with a renovate comment (datasource, depName) on the line above",
       managerFilePatterns: ["/.*/"],
       matchStrings: [
-        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?[^\\n]*\\n[^\\n:=]*[:=]\\s*(?:&\\S+\\s+)?[\"']?(?<currentValue>[^\"'\\s]+)[\"']?",
+        "(?:^|\\n)[ \\t]*#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+packageName=(?<packageName>\\S+))?(?:\\s+versioning=(?<versioning>\\S+))?[^\\n]*\\n[^\\n:=]*[:=]\\s*(?:&\\S+\\s+)?[\"']?(?<currentValue>[^\"'\\s]+)[\"']?",
       ],
     },
   ],
