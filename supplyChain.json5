@@ -1,0 +1,26 @@
+// Wait 3 days before raising ANY update (majors included) from the public package registries:
+// npm, PyPI, crates.io and Go modules.
+//
+// Why: these registries have shipped malware many times, usually through a hijacked maintainer
+// account publishing a poisoned version of a popular package. Most of them are spotted and pulled
+// within hours or a few days. Waiting 3 days means Renovate never even creates a branch for such a
+// version, so CI never installs it either. See README.md.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  // Renovate's own presets for npm, PyPI and crates.io. They also add a warning to PRs for the
+  // update types the wait can't apply to (pin, replacement, lock file maintenance...).
+  extends: ["security:minimumReleaseAgeNpm", "security:minimumReleaseAgePypi", "security:minimumReleaseAgeCrate"],
+  packageRules: [
+    {
+      description: "Go modules: same 3-day wait (Renovate has no built-in preset for Go)",
+      matchDatasources: ["go"],
+      minimumReleaseAge: "3 days",
+      internalChecksFilter: "strict",
+    },
+    {
+      description: "Package registries: hold a version with no release date instead of raising it unchecked (default.json allows that for Docker registries)",
+      matchDatasources: ["npm", "pypi", "crate", "go"],
+      minimumReleaseAgeBehaviour: "timestamp-required",
+    },
+  ],
+}
