@@ -23,7 +23,7 @@ jobs:
       # Keep this on the same Renovate version as the self-hosted runner: a preset that this
       # version accepts can still fail on an older runner.
       # renovate: datasource=npm depName=renovate
-      RENOVATE_VERSION: 44.155.1
+      RENOVATE_VERSION: 44.155.8
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
