@@ -6,6 +6,11 @@
 // Automerging them would skip the wait completely, so they get a PR with the `undated` label,
 // merged by hand. Many projects publish the same image on Docker Hub: switching to it brings
 // back the wait and the automerge. See README.md.
+//
+// Docker Hub images normally have dates, but Docker Hub's API lists only about 1,000 tags of an
+// image to anonymous requests (and accepts only a 10-minute bearer token, not a login), so
+// images with more tags (linuxserver/*, traefik, postgres...) come back without dates. Those are
+// held instead of raised: they wait in the Dependency Dashboard until ticked.
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   // Must be extended AFTER autoMerge.json5, databases.json5 and calver.json5 so this rule wins.
@@ -20,6 +25,16 @@
       ],
       addLabels: ["undated"],
       automerge: false,
+    },
+    {
+      description: "Docker Hub images without a release date (more than about 1,000 tags): hold them instead of raising them without the wait; tick them in the Dependency Dashboard",
+      matchDatasources: ["docker"],
+      // No registry host (postgres, linuxserver/sonarr) or one of Docker Hub's own hosts.
+      matchPackageNames: [
+        "/^[^./]+(\\/[^/]+)*$/",
+        "/^(docker\\.io|index\\.docker\\.io|registry-1\\.docker\\.io)\\//",
+      ],
+      minimumReleaseAgeBehaviour: "timestamp-required",
     },
   ],
 }
