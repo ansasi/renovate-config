@@ -2,10 +2,11 @@
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   packageRules: [
     {
+      // They are only raised once 7 days old (releaseAge.json5); undated.json5 excludes images
+      // without a release date.
       description: "Auto-merge all minor, patch and digest updates",
       matchUpdateTypes: ["minor", "patch", "digest"],
       automerge: true,
-      minimumReleaseAge: "3 days",
     },
     {
       description: "0.x versions: a minor bump (0.4 -> 0.5) can break things, review it",

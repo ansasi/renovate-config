@@ -1,0 +1,18 @@
+// Wait 7 days before raising ANY update: every datasource, majors and digests included.
+//
+// Why: a hijacked maintainer account or a compromised build pipeline can publish a poisoned
+// release, and most of them are spotted and pulled within days. Renovate is exactly what would
+// pull such a release in quickly, so it waits a week first. See README.md.
+//
+// Renovate only knows a release's date when the registry publishes it: Docker Hub, Helm chart
+// repositories, GitHub releases and tags, npm, PyPI, crates.io and Go modules do. Container
+// registries such as GHCR and Quay don't, so their images can't be held: undated.json5 keeps
+// them out of automerge instead.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  minimumReleaseAge: "7 days",
+  // Propose the newest version that is old enough, and don't create a branch for anything newer.
+  // Held updates are listed under "Pending Status Checks" in the Dependency Dashboard; tick one
+  // to get it right away (an urgent security fix).
+  internalChecksFilter: "strict",
+}
