@@ -5,12 +5,14 @@
     ":pinDevDependencies",
     "helpers:pinGitHubActionDigestsToSemver",
     "abandonments:recommended",
+    "./releaseAge.json5",
     "./autoMerge.json5",
     "./labels.json5",
     "./semanticCommits.json5",
     "./databases.json5",
     "./calver.json5",
     "./supplyChain.json5",
+    "./undated.json5",
     "./kubernetes.json5",
     "./annotated.json5",
     ":automergePr",
@@ -20,6 +22,10 @@
   ],
   "dependencyDashboardTitle": "Renovate Dashboard 🤖🛠️",
   "minimumReleaseAgeBehaviour": "timestamp-optional",
+  "rebaseWhen": "conflicted",
+  "vulnerabilityAlerts": {
+    "addLabels": ["security"]
+  },
   "suppressNotifications": [
     "prEditedNotification",
     "prIgnoreNotification"

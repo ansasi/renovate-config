@@ -29,17 +29,24 @@ passes here also loads there.
 | File | What it does |
 |---|---|
 | `default.json` | Entry point, extends everything below, see [Other settings](#other-settings) |
-| `autoMerge.json5` | Automerges minor, patch and digest updates after 3 days, except 0.x minors, see [Automerge](#automerge) |
+| `releaseAge.json5` | Every update waits until the new version is 7 days old, see [Release age](#release-age-7-days) |
+| `autoMerge.json5` | Automerges minor, patch and digest updates, except 0.x minors, see [Automerge](#automerge) |
 | `labels.json5` | Adds a `type/<update type>` label (`type/major` for 0.x minors) |
 | `semanticCommits.json5` | Conventional commit messages and scopes (`container`, `helm`, `github-action`…) |
 | `databases.json5` | Stricter policy for database images, see below |
 | `calver.json5` | No automerge for date versions (`2026.02.07`), see below |
-| `supplyChain.json5` | 3-day wait for every npm, PyPI, crates.io and Go update, see below |
+| `supplyChain.json5` | npm, PyPI, crates.io and Go: the 7-day wait also for indirect dependencies, and no update without a release date, see below |
+| `undated.json5` | No automerge for images from registries without release dates (GHCR, Quay…), see [Undated images](#undated-images) |
 | `kubernetes.json5` | File patterns for the `kubernetes`, `argocd` and `flux` managers |
 | `annotated.json5` | Updates any version that has a `# renovate:` comment above it, see below |
 | `.renovaterc.json5` | Renovate config for this repo itself (not a preset) |
 
 ## Automerge
+
+Minor, patch and digest updates are automerged once they are 7 days old
+([Release age](#release-age-7-days)). Majors, 0.x minors, most database minors
+([Databases](#databases)), date versions ([CalVer](#date-versions-calver)) and
+[undated images](#undated-images) get a PR that is merged by hand.
 
 Automerged updates go through a PR that GitHub merges once the required checks pass
 (`:automergePr`). Renovate can also push straight to the base branch without a PR
@@ -157,11 +164,57 @@ ignored. A repo with another layout can add its own patterns, which are merged w
 }
 ```
 
-## Package registries: 3-day wait
+## Release age: 7 days
 
-Every update from npm, PyPI, crates.io and Go modules waits until the new version is 3 days
-old, majors included. Renovate proposes the newest version that is at least 3 days old, and
-doesn't create a branch for anything newer.
+Every update waits until the new version is 7 days old: every datasource, majors and digests
+included (`minimumReleaseAge`). Renovate proposes the newest version that is old enough and
+doesn't create a branch for anything newer (`internalChecksFilter: strict`); the held updates
+are listed under "Pending Status Checks" in the Dependency Dashboard.
+
+### Why
+
+A hijacked maintainer account or a compromised build pipeline can publish a poisoned release.
+Most are spotted and pulled within days, and Renovate is exactly what would pull such a release
+in quickly. A week covers most of them; databases already waited 7 days for another reason
+([Databases](#databases)).
+
+### Only with a release date
+
+Renovate can only hold a release when the registry publishes its date:
+
+| Source | Release date |
+|---|---|
+| Docker Hub | yes, but only for images with up to about 1,000 tags without a Docker Hub login (see below) |
+| GHCR, Quay, `lscr.io`, ECR and other container registries | no: see [Undated images](#undated-images) |
+| Helm chart repositories (`index.yaml`) | yes |
+| Helm charts stored as OCI images (on GHCR, Quay…) | no: they are container images, see [Undated images](#undated-images) |
+| GitHub releases and tags (GitHub Actions too) | yes |
+| npm, PyPI, crates.io, Go modules | yes |
+
+**Docker Hub with many tags.** Without a login, Docker Hub only lists the first 10 pages (about
+1,000 tags) and then answers "pagination offset too large for anonymous requests". Renovate
+then reads the tags from the registry instead, which has no dates. Images with years of tags
+are affected, for example `linuxserver/*`, `traefik`, `portainer/portainer-ce`, `postgres`,
+`redis`, `homeassistant/home-assistant` and `searxng/searxng`: they are raised without a wait,
+and automerged like dated ones. The Renovate runner needs a Docker Hub login to fix that.
+
+### Urgent security fixes
+
+The wait only limits what Renovate raises and automerges by itself; you can merge any update
+by hand at any time. For a fix you need now:
+
+- **Held by the wait:** tick it under "Pending Status Checks" in the Dependency Dashboard to
+  get the PR right away, review it, and merge it.
+- **Not raised at all** (a container image whose fix Renovate doesn't know about): change the
+  version in a small PR yourself.
+- **Vulnerability alerts:** for the ecosystems GitHub or OSV track (npm, PyPI, Go, crates,
+  GitHub Actions…), Renovate raises a fix PR without the wait, labelled `security`. It needs
+  the repo's *Dependency graph* and *Dependabot alerts* turned on, and read access to
+  Dependabot alerts for the Renovate app. Container images and Helm charts are not covered.
+
+## Package registries
+
+npm, PyPI, crates.io and Go modules wait 7 days like everything else, with two extras.
 
 ### Why
 
@@ -176,14 +229,12 @@ package and npm/PyPI install scripts run there, with the CI secrets.
 
 - npm, PyPI and crates.io use Renovate's own `security:minimumReleaseAge*` presets. Go has no
   built-in preset, so it has its own rule.
-- For npm, Renovate also passes `--before=<3 days ago>` to npm when it updates the lock file, so
+- For npm, Renovate also passes `--before=<the wait>` to npm when it updates the lock file, so
   new versions of *indirect* dependencies are held too.
 - A version with no release date is held, not raised (`timestamp-required`), the opposite of
   the Docker setting in [Other settings](#other-settings). All four registries publish release
   dates, so this only matters for a private mirror that doesn't.
-- When every new version is still too young, the update is listed under "Pending Status
-  Checks" in the Dependency Dashboard. Tick it to get it right away, for example for a
-  security fix you need now.
+- Renovate's presets set 3 days; `supplyChain.json5` keeps them at 7 like the rest.
 
 ### Not covered
 
@@ -194,6 +245,21 @@ package and npm/PyPI install scripts run there, with the CI secrets.
   own setting (pnpm `minimumReleaseAge`, Yarn `npmMinimalAgeGate`, uv `exclude-newer`), set it
   too.
 - **Installs outside Renovate:** an `npm install` you run by hand or in CI without a lock file.
+
+## Undated images
+
+Images from a registry other than Docker Hub (`ghcr.io/…`, `quay.io/…`, `lscr.io/…`,
+including Helm charts stored as OCI images) have no release date, so the 7-day wait can't hold
+them. They are raised as soon as they appear, with the `undated` label, and never automerged:
+merge them by hand once you are happy with the release.
+
+Many projects publish the same image on Docker Hub too. Compare the digests of a tag on both
+registries: when they are equal, switching the image to Docker Hub brings back the wait and the
+automerge. The `undated` rule matches any image whose name starts with a registry host other
+than Docker Hub's (`docker.io`, `index.docker.io`, `registry-1.docker.io`).
+
+A repo rule that sets `automerge: true` for such an image overrides this, because repo rules run
+after the presets. Only do that for an image you'd accept without any wait.
 
 ## 0.x versions
 
@@ -234,8 +300,14 @@ Set in `default.json`:
 - **`minimumReleaseAgeBehaviour: timestamp-optional`.** Since Renovate 42, an update without a
   release date never passes `minimumReleaseAge` and is held forever. GHCR, Quay and ECR don't
   publish release dates, so without this setting their images would never update. The
-  downside: those images skip the 3-day (or 7-day, for databases) wait. Package registries are
-  the exception, see [above](#package-registries-3-day-wait).
+  downside: those images skip the 7-day wait, so they are never automerged
+  ([Undated images](#undated-images)). Package registries are the exception, see
+  [above](#package-registries).
+- **`rebaseWhen: conflicted`.** A PR is only rebased when it conflicts with the base branch,
+  not every time the base branch moves: fewer CI runs. The repos' base branches don't require
+  PRs to be up to date before merging; with that rule on, automerge would wait for a rebase.
+- **`vulnerabilityAlerts`** add the `security` label; Renovate's defaults already skip the
+  wait and the schedule for them ([Urgent security fixes](#urgent-security-fixes)).
 - **`abandonments:recommended`.** Packages with no release for a year are flagged as abandoned
   in the Dependency Dashboard.
 - **`:configMigration`.** When a repo's own Renovate config uses outdated options, Renovate
