@@ -195,8 +195,12 @@ Renovate can only hold a release when the registry publishes its date:
 1,000 tags) and then answers "pagination offset too large for anonymous requests". Renovate
 then reads the tags from the registry instead, which has no dates. Images with years of tags
 are affected, for example `linuxserver/*`, `traefik`, `portainer/portainer-ce`, `postgres`,
-`redis`, `homeassistant/home-assistant` and `searxng/searxng`: they are raised without a wait,
-and automerged like dated ones. The Renovate runner needs a Docker Hub login to fix that.
+`redis`, `grafana/grafana` and `searxng/searxng`. A login doesn't help: Docker Hub's API ignores
+it and only accepts a bearer token that expires after 10 minutes, shorter than a Renovate run.
+So a Docker Hub image without a date is **held** (`minimumReleaseAgeBehaviour:
+timestamp-required`, in `undated.json5`): its updates are listed under "Pending Status Checks" in
+the Dependency Dashboard and get a PR only when ticked, merged by hand. Without that rule they
+would be raised without any wait and automerged.
 
 ### Urgent security fixes
 
