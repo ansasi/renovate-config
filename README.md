@@ -33,8 +33,8 @@ passes here also loads there.
 | `autoMerge.json5` | Automerges minor, patch and digest updates, except 0.x minors, see [Automerge](#automerge) |
 | `labels.json5` | Adds a `type/<update type>` label (`type/major` for 0.x minors) |
 | `semanticCommits.json5` | Conventional commit messages and scopes (`container`, `helm`, `github-action`…) |
-| `databases.json5` | Stricter policy for database images, see below |
-| `calver.json5` | No automerge for date versions (`2026.02.07`), see below |
+| `databases.json5` | Stricter policy for database images, always in a PR of their own, see below |
+| `calver.json5` | Never automerges date versions (`2026.02.07`, `20260207`…), see below |
 | `supplyChain.json5` | npm, PyPI, crates.io and Go: the 7-day wait also for indirect dependencies, and no update without a release date, see below |
 | `undated.json5` | No automerge for images from registries without release dates (GHCR, Quay…), see [Undated images](#undated-images) |
 | `kubernetes.json5` | File patterns for the `kubernetes`, `argocd` and `flux` managers |
@@ -68,7 +68,11 @@ every PR, not one limited to some `paths`).
 | minor, other databases | PR, merged by hand |
 | major | No PR until approved from the Dependency Dashboard |
 
-All database updates get the `database` label.
+All database updates get the `database` label and a PR of their own: when a repo groups an
+app's images (`groupName`), the database still gets its own branch (`renovate/db-<group>`,
+titled "<group> database"). The list covers PostgreSQL and its extension images
+(pgvector, VectorChord), MariaDB, MySQL, MongoDB, Redis, Valkey and the search and analytics
+databases in `databases.json5`.
 
 ### Why
 
@@ -85,6 +89,9 @@ All database updates get the `database` label.
   on-disk format, and the Postgres team recommends always running the latest one.
 - **Majors need a planned migration** (dump/restore, `pg_upgrade`…). Automatic PRs for
   them are only noise, so they wait in the Dependency Dashboard until you tick them.
+- **Never with the app:** the app's update can be reverted, the database's often can't.
+  In its own PR, a database change is reviewed and merged on its own, never pulled in by an
+  app patch.
 - **7 days instead of 3:** in November 2024, PostgreSQL 17.1 and 16.5 broke
   extensions such as TimescaleDB, and a fix came out about a week later.
 
@@ -116,39 +123,23 @@ tag, Renovate can only suggest majors, and the updates in between happen silentl
 
 ## Date versions (CalVer)
 
-Dependencies whose current version starts with a date (`2026.02.07`, `2026-02-07`,
-`v2026.02.07`, `2025.10.1`…) are never automerged. They get a PR with the `calver` label,
-merged by hand.
+A dependency whose current or new version contains a date is never automerged, in any repo.
+It gets a PR with the `calver` label, merged by hand. The date can be anywhere in the version,
+with or without separators:
+
+- `2026.02.07`, `2026-02-07`, `2026_02_07`, `v2026.02.07`, `2025.10.1`, `2026.12`
+- `20260207`
+- `RELEASE.2026-02-07T10-00-00Z`, `nightly-2026-02-07`, `2026.10.4-d48c4b555`
+
+Build numbers such as `4.0.15.2941` don't match: a year needs a month after it.
 
 Automerge trusts the update type: with SemVer (`1.3.2`) a minor or patch promises no
 breaking change. A date only says when the release came out, yet Renovate still calls
-`2026.02.07 → 2026.03.01` a "minor" update and would automerge it.
+`2026.02.07 → 2026.03.01` a "minor" update and would automerge it. The new version is checked
+too, so a project that switches from SemVer to dates is caught.
 
-To get automerge back in one repo, add a rule to its `renovate.json`. Repo rules run after
-the presets, so they win:
-
-```json5
-{
-    packageRules: [
-        // Only this package
-        { matchPackageNames: ["ghcr.io/home-assistant/home-assistant"], automerge: true },
-        // Or every date version in this repo
-        { matchCurrentVersion: "/^v?20\\d{2}[.-]/", automerge: true },
-    ],
-}
-```
-
-Or drop the preset completely:
-
-```json
-{
-    "ignorePresets": ["local>ansasi/renovate-config//calver.json5"]
-}
-```
-
-Use the same prefix as in your `extends` (`local>` or `github>`), followed by `//` and the file
-name. Renovate turns the relative paths in `default.json` into that form before it checks
-`ignorePresets`, so `./calver.json5` or the old `:calver.json5` form won't match.
+No repo turns this back on (decided on 2026-11-24): a repo rule with `automerge: true` for a
+date version would win over the preset, so don't add one.
 
 ## Kubernetes
 

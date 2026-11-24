@@ -1,4 +1,4 @@
-// Stricter update policy for database images. See README.md for the full reasoning.
+// Stricter update policy for database images, always in a PR of their own. See README.md.
 //
 // Why: an app update that breaks is fixed by reverting the PR. A database update often
 // rewrites its data on disk when it starts, so reverting the image tag leaves an old
@@ -17,7 +17,7 @@
       description: "Databases: label, wait longer and keep patch separate from minor so patches can still automerge",
       matchDatasources: ["docker"],
       matchPackageNames: [
-        "/(^|/)(postgres|postgresql|postgis|pgvector|timescaledb|timescaledb-ha)$/",
+        "/(^|/)(postgres|postgresql|postgis|pgvector|vchord|vchord-scratch|timescaledb|timescaledb-ha)$/",
         "/(^|/)(mariadb|mysql|percona-server|mssql/server)$/",
         "/(^|/)(mongo|mongodb-community-server|percona-server-mongodb)$/",
         "/(^|/)(redis|redis-stack-server|valkey)$/",
@@ -26,12 +26,15 @@
       addLabels: ["database"],
       separateMinorPatch: true,
       minimumReleaseAge: "7 days",
+      // Never in the same PR as other components, even when a repo groups an app's images.
+      additionalBranchPrefix: "db-",
+      group: {commitMessageTopic: "{{{groupName}}} database"},
     },
     {
       description: "Databases: minor bumps are new release series (MariaDB 11.4 -> 11.8, MySQL 8.0 -> 8.4, Mongo 7.0 -> 7.3...), review them",
       matchDatasources: ["docker"],
       matchPackageNames: [
-        "/(^|/)(postgres|postgresql|postgis|pgvector|timescaledb|timescaledb-ha)$/",
+        "/(^|/)(postgres|postgresql|postgis|pgvector|vchord|vchord-scratch|timescaledb|timescaledb-ha)$/",
         "/(^|/)(mariadb|mysql|percona-server|mssql/server)$/",
         "/(^|/)(mongo|mongodb-community-server|percona-server-mongodb)$/",
         "/(^|/)(redis|redis-stack-server|valkey)$/",
@@ -51,7 +54,7 @@
       description: "Databases: majors need a data migration (dump/restore, pg_upgrade...), only open a PR when ticked in the dashboard",
       matchDatasources: ["docker"],
       matchPackageNames: [
-        "/(^|/)(postgres|postgresql|postgis|pgvector|timescaledb|timescaledb-ha)$/",
+        "/(^|/)(postgres|postgresql|postgis|pgvector|vchord|vchord-scratch|timescaledb|timescaledb-ha)$/",
         "/(^|/)(mariadb|mysql|percona-server|mssql/server)$/",
         "/(^|/)(mongo|mongodb-community-server|percona-server-mongodb)$/",
         "/(^|/)(redis|redis-stack-server|valkey)$/",
