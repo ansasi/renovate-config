@@ -36,7 +36,7 @@ passes here also loads there.
 | `databases.json5` | Stricter policy for database images, always in a PR of their own, see below |
 | `calver.json5` | Never automerges date versions (`2026.02.07`, `20260207`…), see below |
 | `supplyChain.json5` | npm, PyPI, crates.io and Go: the 7-day wait also for indirect dependencies, and no update without a release date, see below |
-| `undated.json5` | No automerge for images from registries without release dates (GHCR, Quay…), see [Undated images](#undated-images) |
+| `undated.json5` | Images from registries without release dates (GHCR, Quay…): the 7-day wait counts from the PR, see [Undated images](#undated-images) |
 | `kubernetes.json5` | File patterns for the `kubernetes`, `argocd` and `flux` managers |
 | `annotated.json5` | Updates any version that has a `# renovate:` comment above it, see below |
 | `.renovaterc.json5` | Renovate config for this repo itself (not a preset) |
@@ -45,9 +45,9 @@ passes here also loads there.
 
 Minor, patch and digest updates are automerged once they are 7 days old
 ([Release age](#release-age-7-days)). Majors, 0.x minors, most database minors
-([Databases](#databases)), date versions ([CalVer](#date-versions-calver)) and
-[undated images](#undated-images) get a PR. Undated patches, minors and digests are then
-[merged 7 days after their PR](#merged-after-7-days-by-label) by the Renovate workflow.
+([Databases](#databases)) and date versions ([CalVer](#date-versions-calver)) get a PR that
+is merged by hand. [Undated images](#undated-images) follow the same rules, with the 7 days
+counted from their PR.
 
 Automerged updates go through a PR that GitHub merges once the required checks pass
 (`:automergePr`). Renovate can also push straight to the base branch without a PR
@@ -246,58 +246,38 @@ package and npm/PyPI install scripts run there, with the CI secrets.
 
 Images from a registry other than Docker Hub (`ghcr.io/…`, `quay.io/…`, `lscr.io/…`,
 including Helm charts stored as OCI images) have no release date, so the 7-day wait can't hold
-them. They are raised as soon as they appear, with the `undated` label, and Renovate never
-automerges them: the Renovate workflow merges them 7 days after their PR instead
-([Merged after 7 days, by label](#merged-after-7-days-by-label)), or you merge them by hand.
+them on it. They are raised as soon as they appear, with the `undated` label, and the wait is
+counted from the PR instead:
+
+- **Renovate's rules decide, as for any update:** majors, 0.x minors, date versions
+  (`calver`), most database minors and any repo rule with `automerge: false` stay PRs for
+  review. Patches, minors and digests that may be automerged wait for the next point.
+- **The 7 days:** the Renovate workflow in [`ansasi/.github`](https://github.com/ansasi/.github)
+  sets a commit status, `undated-age`, on every open `undated` PR before each run: `pending`
+  until the newest commit on the branch is 7 days old, then `success`. Renovate merges only
+  when every check is green. A newer version pushes a new commit, so the wait starts again.
+
+Two settings on undated images make the wait hold:
+
+- `platformAutomerge: false`: Renovate merges the PR itself. GitHub's auto-merge only waits for
+  the *required* checks, and `undated-age` isn't one.
+- `rebaseWhen: "conflicted"`: a rebase pushes a new commit and restarts the wait, so the branch
+  is only rebased on a conflict.
+
+Renovate never merges in the run that pushed a commit, and the workflow sets the status before
+Renovate runs, so a PR can't be merged before its status exists. If the status step fails, the
+workflow stops before Renovate runs. In a grouped PR, Renovate automerges only when every update
+in it may be automerged. The PR body says which: "Automerge: Enabled" or "Disabled by config".
+The status shows on PRs left for review too, so it tells you when their week is up. To merge one
+sooner (an urgent fix), merge it by hand. In a repo whose merges don't deploy by themselves
+(Ansible, Compose stacks), a merged update waits for the next deploy.
 
 Many projects publish the same image on Docker Hub too. Compare the digests of a tag on both
-registries: when they are equal, switching the image to Docker Hub brings back the wait and the
-automerge. The `undated` rule matches any image whose name starts with a registry host other
+registries: when they are equal, switching the image to Docker Hub gives the wait from the real
+release date. The `undated` rule matches any image whose name starts with a registry host other
 than Docker Hub's (`docker.io`, `index.docker.io`, `registry-1.docker.io`).
 
-A repo rule that sets `automerge: true` for such an image overrides this, because repo rules run
-after the presets. Only do that for an image you'd accept without any wait.
-
-### Merged after 7 days, by label
-
-The Renovate workflow in [`ansasi/.github`](https://github.com/ansasi/.github) merges `undated`
-PRs after a week, in every repo that extends this preset, deciding only by the PR's labels, so
-no app is named anywhere. Every app's image comes from the registry its own docs give, so an
-undated image is trusted wherever it is used (decided 2026-11-24). It merges a PR when all of
-these hold:
-
-| | Labels | Added by |
-|---|---|---|
-| All of | `undated` | this preset (`undated.json5`) |
-| One of | `type/patch`, `type/minor`, `type/digest` | this preset (`labels.json5`) |
-| None of | `type/major` (majors and 0.x minors) | this preset (`labels.json5`) |
-| | `calver` (a date in the old or new version) | this preset (`calver.json5`) |
-| | `database` | this preset (`databases.json5`) |
-| | `manual` | the repo, see below |
-
-and the newest commit on the branch is 7 days old (a newer version pushes a new commit, so the
-wait starts again) and every check passed.
-
-**`manual` is each repo's call:** an image that must never be merged without a review gets it
-in the repo's own config. To keep a whole repo out, give it to every undated image there.
-
-```json5
-packageRules: [
-  {
-    description: "Never merged without a review",
-    matchPackageNames: ["ghcr.io/example/app"],
-    addLabels: ["manual"],
-  },
-],
-```
-
-Use `addLabels`, not `labels`: `labels` replaces the `type/*` labels the merge needs. A repo rule
-with `automerge: false` alone doesn't stop the merge of an undated PR, `manual` does.
-
-In a grouped PR, Renovate adds the labels of every update in it, so one `manual`, `calver`,
-`database` or `type/major` update keeps the whole PR for review. To merge a PR sooner (an urgent
-fix), merge it by hand. In a repo whose merges don't deploy by themselves (Ansible, Compose
-stacks), a merged update waits for the next deploy, together with the others merged that week.
+To keep an undated image for review, give it `automerge: false` in the repo's own rules.
 
 ## 0.x versions
 
@@ -338,8 +318,8 @@ Set in `default.json`:
 - **`minimumReleaseAgeBehaviour: timestamp-optional`.** Since Renovate 42, an update without a
   release date never passes `minimumReleaseAge` and is held forever. GHCR, Quay and ECR don't
   publish release dates, so without this setting their images would never update. The
-  downside: those images skip the 7-day wait, so they are never automerged
-  ([Undated images](#undated-images)). Package registries are the exception, see
+  downside: those images skip the 7-day wait on their release date, so it is counted from
+  their PR instead ([Undated images](#undated-images)). Package registries are the exception, see
   [above](#package-registries).
 - **`rebaseWhen: conflicted`.** A PR is only rebased when it conflicts with the base branch,
   not every time the base branch moves: fewer CI runs. The repos' base branches don't require
