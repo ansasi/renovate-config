@@ -46,8 +46,8 @@ passes here also loads there.
 Minor, patch and digest updates are automerged once they are 7 days old
 ([Release age](#release-age-7-days)). Majors, 0.x minors, most database minors
 ([Databases](#databases)), date versions ([CalVer](#date-versions-calver)) and
-[undated images](#undated-images) get a PR that is merged by hand, unless the repo labels them
-[`trusted`](#merged-after-7-days-by-label).
+[undated images](#undated-images) get a PR. Undated patches, minors and digests are then
+[merged 7 days after their PR](#merged-after-7-days-by-label) by the Renovate workflow.
 
 Automerged updates go through a PR that GitHub merges once the required checks pass
 (`:automergePr`). Renovate can also push straight to the base branch without a PR
@@ -246,8 +246,9 @@ package and npm/PyPI install scripts run there, with the CI secrets.
 
 Images from a registry other than Docker Hub (`ghcr.io/…`, `quay.io/…`, `lscr.io/…`,
 including Helm charts stored as OCI images) have no release date, so the 7-day wait can't hold
-them. They are raised as soon as they appear, with the `undated` label, and never automerged:
-merge them by hand once you are happy with the release.
+them. They are raised as soon as they appear, with the `undated` label, and Renovate never
+automerges them: the Renovate workflow merges them 7 days after their PR instead
+([Merged after 7 days, by label](#merged-after-7-days-by-label)), or you merge them by hand.
 
 Many projects publish the same image on Docker Hub too. Compare the digests of a tag on both
 registries: when they are equal, switching the image to Docker Hub brings back the wait and the
@@ -260,13 +261,14 @@ after the presets. Only do that for an image you'd accept without any wait.
 ### Merged after 7 days, by label
 
 The Renovate workflow in [`ansasi/.github`](https://github.com/ansasi/.github) merges `undated`
-PRs after a week, deciding only by the PR's labels, so neither repo names an app. It merges a PR
-when all of these hold:
+PRs after a week, in every repo that extends this preset, deciding only by the PR's labels, so
+no app is named anywhere. Every app's image comes from the registry its own docs give, so an
+undated image is trusted wherever it is used (decided 2026-11-24). It merges a PR when all of
+these hold:
 
 | | Labels | Added by |
 |---|---|---|
 | All of | `undated` | this preset (`undated.json5`) |
-| | `trusted` | the repo, see below |
 | One of | `type/patch`, `type/minor`, `type/digest` | this preset (`labels.json5`) |
 | None of | `type/major` (majors and 0.x minors) | this preset (`labels.json5`) |
 | | `calver` (a date in the old or new version) | this preset (`calver.json5`) |
@@ -276,18 +278,11 @@ when all of these hold:
 and the newest commit on the branch is 7 days old (a newer version pushes a new commit, so the
 wait starts again) and every check passed.
 
-**`trusted` and `manual` are each repo's call.** This preset never adds them, so a repo that does
-nothing keeps merging its undated PRs by hand. A repo opts in with one rule, and keeps exceptions
-out with another:
+**`manual` is each repo's call:** an image that must never be merged without a review gets it
+in the repo's own config. To keep a whole repo out, give it to every undated image there.
 
 ```json5
 packageRules: [
-  {
-    description: "Undated images: this repo uses each app's own registry, merge them after 7 days",
-    matchDatasources: ["docker"],
-    matchPackageNames: ["/^[^/]+\\.[^/]+\\//", "!/^(docker\\.io|index\\.docker\\.io|registry-1\\.docker\\.io)\\//"],
-    addLabels: ["trusted"],
-  },
   {
     description: "Never merged without a review",
     matchPackageNames: ["ghcr.io/example/app"],
@@ -301,7 +296,8 @@ with `automerge: false` alone doesn't stop the merge of an undated PR, `manual` 
 
 In a grouped PR, Renovate adds the labels of every update in it, so one `manual`, `calver`,
 `database` or `type/major` update keeps the whole PR for review. To merge a PR sooner (an urgent
-fix), merge it by hand.
+fix), merge it by hand. In a repo whose merges don't deploy by themselves (Ansible, Compose
+stacks), a merged update waits for the next deploy, together with the others merged that week.
 
 ## 0.x versions
 
