@@ -1,0 +1,79 @@
+// Automerge undated images (undated.json5) from trusted publishers, once their PR is 7 days old.
+//
+// Why: GHCR, Quay and OCI Helm charts give Renovate no release date, so the 7-day wait in
+// releaseAge.json5 can't hold them and undated.json5 leaves them to be merged by hand. For the
+// publishers below, the wait is counted from the PR instead: Renovate merges the PR only when
+// every check is green, and the `undated-age` check (set by the Renovate workflow in
+// ansasi/.github before each run) stays pending until the newest commit on the branch is 7 days
+// old. A newer version pushes a new commit, so the wait starts again. See README.md.
+//
+// Only when all of these hold:
+// - the image or chart is published by one of the organisations below (reviewed in its own PR);
+// - the old and the new tag are both plain versions (1.4.2, v2.0.1, 5.0.0.2941): never a date
+//   such as 2026.11.11 or 20261111, latest, a branch name or a commit hash;
+// - a patch, a minor or a digest update: never a major, never a 0.x minor (autoMerge.json5);
+// - not a database image (databases.json5): database updates from these registries stay
+//   reviewed.
+//
+// Must be extended AFTER undated.json5 so this rule wins over its automerge: false.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  packageRules: [
+    {
+      description: "Undated images from trusted publishers with plain versions: automerge patches, minors and digests once the PR is 7 days old (undated-age check)",
+      matchDatasources: ["docker"],
+      matchPackageNames: [
+        // The apps' own organisations.
+        "ghcr.io/immich-app/**",
+        "ghcr.io/paperless-ngx/**",
+        "ghcr.io/advplyr/**",
+        "ghcr.io/seerr-team/**",
+        "ghcr.io/home-assistant/**",
+        "ghcr.io/gethomepage/**",
+        "ghcr.io/open-webui/**",
+        "ghcr.io/recyclarr/**",
+        "ghcr.io/nextcloud-releases/**",
+        "ghcr.io/kube-vip/**",
+        // Flux and the cluster's charts, from their own publishers.
+        "ghcr.io/fluxcd/**",
+        "ghcr.io/controlplaneio-fluxcd/**",
+        "ghcr.io/cloudnative-pg/**",
+        "ghcr.io/traefik/**",
+        "ghcr.io/stakater/**",
+        "ghcr.io/prometheus-community/**",
+        "ghcr.io/victoriametrics/**",
+        "ghcr.io/openebs/**",
+        "ghcr.io/goauthentik/**",
+        "quay.io/jetstack/**",
+        "quay.io/metallb/**",
+        // The home-operations community images and bjw-s's app-template chart.
+        "ghcr.io/home-operations/**",
+        "ghcr.io/bjw-s-labs/**",
+        // Never database images (the names in databases.json5): they stay reviewed.
+        "!/(^|/)(postgres|postgresql|postgis|pgvector|vchord|vchord-scratch|timescaledb|timescaledb-ha)$/",
+        "!/(^|/)(mariadb|mysql|percona-server|mssql/server)$/",
+        "!/(^|/)(mongo|mongodb-community-server|percona-server-mongodb)$/",
+        "!/(^|/)(redis|redis-stack-server|valkey)$/",
+        "!/(^|/)(elasticsearch|opensearch|clickhouse-server|influxdb|cassandra|couchdb|neo4j)$/",
+      ],
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      // A plain version, old and new: up to 3 digits before the first dot (so no 2026.11.11),
+      // then 1 to 3 more numbers without leading zeros (so no 25.04.1), nothing after (no -rc1, no
+      // -20261111, no commit hash).
+      matchCurrentValue: "/^v?(0|[1-9][0-9]{0,2})(\\.(0|[1-9][0-9]*)){1,3}$/",
+      matchNewValue: "/^v?(0|[1-9][0-9]{0,2})(\\.(0|[1-9][0-9]*)){1,3}$/",
+      automerge: true,
+      // Renovate merges, not GitHub's auto-merge: GitHub only waits for the required checks,
+      // and undated-age isn't one, so GitHub would merge without the wait.
+      platformAutomerge: false,
+      // A rebase pushes a new commit and restarts the wait: only rebase on a conflict.
+      rebaseWhen: "conflicted",
+    },
+    {
+      description: "0.x versions: a minor bump (0.4 -> 0.5) can break things, review it (again, after the rule above)",
+      matchUpdateTypes: ["minor"],
+      matchCurrentVersion: "/^v?0\\./",
+      automerge: false,
+    },
+  ],
+}

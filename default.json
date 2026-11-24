@@ -13,6 +13,7 @@
     "./calver.json5",
     "./supplyChain.json5",
     "./undated.json5",
+    "./trusted.json5",
     "./kubernetes.json5",
     "./annotated.json5",
     ":automergePr",
