@@ -1,11 +1,13 @@
-// Never automerge images from registries that don't publish release dates.
+// Images from registries that don't publish release dates: the 7-day wait counts from the PR.
 //
 // Why: the 7-day wait (releaseAge.json5) needs a release date. Only Docker Hub gives Renovate
 // one; GHCR, Quay, LinuxServer's lscr.io and most other registries don't, so their updates are
 // raised as soon as they appear (minimumReleaseAgeBehaviour=timestamp-optional in default.json).
-// Automerging them would skip the wait completely, so they get a PR with the `undated` label,
-// merged by hand. Many projects publish the same image on Docker Hub: switching to it brings
-// back the wait and the automerge. See README.md.
+// Automerging them right away would skip the wait completely, so they get a PR with the `undated`
+// label, and the Renovate workflow in ansasi/.github holds it with the `undated-age` check until
+// its newest commit is 7 days old. Whether it is then automerged is up to every other rule, as for
+// any update. Many projects publish the same image on Docker Hub: switching to it gives the wait
+// from the real release date. See README.md.
 //
 // Docker Hub images normally have dates, but Docker Hub's API lists only about 1,000 tags of an
 // image to anonymous requests (and accepts only a 10-minute bearer token, not a login), so
@@ -13,10 +15,10 @@
 // held instead of raised: they wait in the Dependency Dashboard until ticked.
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
-  // Must be extended AFTER autoMerge.json5, databases.json5 and calver.json5 so this rule wins.
+  // It no longer changes automerge, so its place among the presets doesn't matter for that.
   packageRules: [
     {
-      description: "Images outside Docker Hub have no release date, so the 7-day wait can't apply: PR with the undated label, merged by hand",
+      description: "Images outside Docker Hub have no release date, so the 7-day wait is counted from the PR instead: undated label, merged by Renovate once the undated-age check passes",
       matchDatasources: ["docker"],
       // A registry host in front of the image (ghcr.io/..., quay.io/...), except Docker Hub's own hosts.
       matchPackageNames: [
@@ -24,7 +26,14 @@
         "!/^(docker\\.io|index\\.docker\\.io|registry-1\\.docker\\.io)\\//",
       ],
       addLabels: ["undated"],
-      automerge: false,
+      // Renovate's other rules decide whether it may be automerged (majors, 0.x minors, dates,
+      // databases, repo rules...); this only holds it 7 days. Renovate merges it itself once every
+      // check is green, including `undated-age`, which the Renovate workflow in ansasi/.github keeps
+      // pending until the newest commit on the branch is 7 days old. GitHub's auto-merge only
+      // waits for required checks, so it would skip that one.
+      platformAutomerge: false,
+      // A rebase pushes a new commit and restarts the wait: only rebase on a conflict.
+      rebaseWhen: "conflicted",
     },
     {
       description: "Docker Hub images without a release date (more than about 1,000 tags): hold them instead of raising them without the wait; tick them in the Dependency Dashboard",
