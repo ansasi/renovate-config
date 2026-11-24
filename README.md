@@ -34,7 +34,7 @@ passes here also loads there.
 | `labels.json5` | Adds a `type/<update type>` label (`type/major` for 0.x minors) |
 | `semanticCommits.json5` | Conventional commit messages and scopes (`container`, `helm`, `github-action`…) |
 | `databases.json5` | Stricter policy for database images, always in a PR of their own, see below |
-| `calver.json5` | Never automerges date versions (`2026.02.07`, `20260207`…), see below |
+| `calver.json5` | Never automerges date versions (`2026.02.07`, `20260207`…) or image tags that aren't standard versions (`latest`, `-beta`, hashes…), see below |
 | `supplyChain.json5` | npm, PyPI, crates.io and Go: the 7-day wait also for indirect dependencies, and no update without a release date, see below |
 | `undated.json5` | Images from registries without release dates (GHCR, Quay…): the 7-day wait counts from the PR, see [Undated images](#undated-images) |
 | `kubernetes.json5` | File patterns for the `kubernetes`, `argocd` and `flux` managers |
@@ -133,6 +133,22 @@ with or without separators:
 - `RELEASE.2026-02-07T10-00-00Z`, `nightly-2026-02-07`, `2026.10.4-d48c4b555`
 
 Build numbers such as `4.0.15.2941` don't match: a year needs a month after it.
+
+**Container image tags are also checked the other way round**, because a tag can be any string.
+An image whose old or new tag isn't a standard version gets the `nonstandard` label and is
+never automerged. A standard version is an optional `v`, up to 3 digits before the first dot,
+up to 3 more numbers without leading zeros, and optional suffixes that start with a letter:
+
+| Standard (follows the other rules) | Not standard (`nonstandard`, reviewed) |
+|---|---|
+| `1.4.2`, `v2.0.1`, `18`, `5.0.0.2941` | `2026.11.11`, `25.04.1`, `v2026.9.24` (dates, also `calver`) |
+| `18.7-minimal-trixie`, `9.1.3-alpine`, `0.6.24-ls300` | `latest`, `stable`, `main`, a commit hash |
+| | `pg18-v1.1.1` (a prefix), `v1.5.0-beta.1`, `2.0.0-rc1`, `1.4.1-d48c4b5` |
+
+The date patterns above stay for every datasource; npm, PyPI, GitHub releases and the others
+parse versions with their own strict schemes, so the standard-version check is only for images.
+A repo whose image needs another tag scheme sets its own `versioning` and, if it should be
+automerged anyway, a rule of its own after the presets.
 
 Automerge trusts the update type: with SemVer (`1.3.2`) a minor or patch promises no
 breaking change. A date only says when the release came out, yet Renovate still calls
