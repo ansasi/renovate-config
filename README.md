@@ -129,7 +129,7 @@ It gets a PR with the `calver` label, merged by hand. The date can be anywhere i
 with or without separators:
 
 - `2026.02.07`, `2026-02-07`, `2026_02_07`, `v2026.02.07`, `2025.10.1`, `2026.12`
-- `20260207`
+- `20260207`, `2026.1023.0` (year, then month and day together)
 - `RELEASE.2026-02-07T10-00-00Z`, `nightly-2026-02-07`, `2026.10.4-d48c4b555`
 
 Build numbers such as `4.0.15.2941` don't match: a year needs a month after it.
