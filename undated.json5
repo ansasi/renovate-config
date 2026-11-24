@@ -5,8 +5,8 @@
 // raised as soon as they appear (minimumReleaseAgeBehaviour=timestamp-optional in default.json).
 // Automerging them would skip the wait completely, so they get a PR with the `undated` label,
 // merged by hand. Many projects publish the same image on Docker Hub: switching to it brings
-// back the wait and the automerge. Trusted publishers are automerged anyway, 7 days after their
-// PR (trusted.json5). See README.md.
+// back the wait and the automerge. The Renovate workflow in ansasi/.github merges `undated` PRs
+// that a repo labels `trusted` once they are 7 days old. See README.md.
 //
 // Docker Hub images normally have dates, but Docker Hub's API lists only about 1,000 tags of an
 // image to anonymous requests (and accepts only a 10-minute bearer token, not a login), so
@@ -14,8 +14,7 @@
 // held instead of raised: they wait in the Dependency Dashboard until ticked.
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
-  // Must be extended AFTER autoMerge.json5, databases.json5 and calver.json5 so this rule wins,
-  // and BEFORE trusted.json5.
+  // Must be extended AFTER autoMerge.json5, databases.json5 and calver.json5 so this rule wins.
   packageRules: [
     {
       description: "Images outside Docker Hub have no release date, so the 7-day wait can't apply: PR with the undated label, merged by hand",

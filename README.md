@@ -37,7 +37,6 @@ passes here also loads there.
 | `calver.json5` | Never automerges date versions (`2026.02.07`, `20260207`…), see below |
 | `supplyChain.json5` | npm, PyPI, crates.io and Go: the 7-day wait also for indirect dependencies, and no update without a release date, see below |
 | `undated.json5` | No automerge for images from registries without release dates (GHCR, Quay…), see [Undated images](#undated-images) |
-| `trusted.json5` | Automerges undated images from trusted publishers with plain versions once their PR is 7 days old, see [Trusted publishers](#trusted-publishers) |
 | `kubernetes.json5` | File patterns for the `kubernetes`, `argocd` and `flux` managers |
 | `annotated.json5` | Updates any version that has a `# renovate:` comment above it, see below |
 | `.renovaterc.json5` | Renovate config for this repo itself (not a preset) |
@@ -47,8 +46,8 @@ passes here also loads there.
 Minor, patch and digest updates are automerged once they are 7 days old
 ([Release age](#release-age-7-days)). Majors, 0.x minors, most database minors
 ([Databases](#databases)), date versions ([CalVer](#date-versions-calver)) and
-[undated images](#undated-images) get a PR that is merged by hand, except undated images from
-[trusted publishers](#trusted-publishers), merged 7 days after their PR.
+[undated images](#undated-images) get a PR that is merged by hand, unless the repo labels them
+[`trusted`](#merged-after-7-days-by-label).
 
 Automerged updates go through a PR that GitHub merges once the required checks pass
 (`:automergePr`). Renovate can also push straight to the base branch without a PR
@@ -258,43 +257,51 @@ than Docker Hub's (`docker.io`, `index.docker.io`, `registry-1.docker.io`).
 A repo rule that sets `automerge: true` for such an image overrides this, because repo rules run
 after the presets. Only do that for an image you'd accept without any wait.
 
-### Trusted publishers
+### Merged after 7 days, by label
 
-Undated images from the publishers listed in `trusted.json5` are automerged anyway, with the 7
-days counted from the PR instead of the release. A PR is merged only when all of these hold:
+The Renovate workflow in [`ansasi/.github`](https://github.com/ansasi/.github) merges `undated`
+PRs after a week, deciding only by the PR's labels, so neither repo names an app. It merges a PR
+when all of these hold:
 
-- **A trusted publisher:** the image or chart comes from an organisation on the list: the apps'
-  own (`ghcr.io/immich-app`, `ghcr.io/paperless-ngx`…), the charts' own publishers
-  (`ghcr.io/traefik`, `quay.io/jetstack`…), home-operations and bjw-s. Anyone else's image stays
-  a PR. Change the list in its own PR.
-- **A plain version, old and new:** `1.4.2`, `v2.0.1`, `5.0.0.2941`. Never a date or something
-  like one (`2026.11.11`, `20261111`, `25.04.1`), `latest`, a suffix (`-rc1`, `-alpine`,
-  `-ls12`), a branch name or a commit hash.
-- **A patch, a minor or a digest update:** never a major or a 0.x minor, and never a database
-  image (the names in `databases.json5`).
-- **Every check is green, and the newest commit on the branch is 7 days old.**
+| | Labels | Added by |
+|---|---|---|
+| All of | `undated` | this preset (`undated.json5`) |
+| | `trusted` | the repo, see below |
+| One of | `type/patch`, `type/minor`, `type/digest` | this preset (`labels.json5`) |
+| None of | `type/major` (majors and 0.x minors) | this preset (`labels.json5`) |
+| | `calver` (a date in the old or new version) | this preset (`calver.json5`) |
+| | `database` | this preset (`databases.json5`) |
+| | `manual` | the repo, see below |
 
-The age comes from a commit status, `undated-age`, that the Renovate workflow in
-[`ansasi/.github`](https://github.com/ansasi/.github) sets on every open `undated` PR before each
-run: `pending` until the newest commit is 7 days old, then `success`. Renovate merges only when
-every check is green, so the PR waits. Two settings make that hold:
+and the newest commit on the branch is 7 days old (a newer version pushes a new commit, so the
+wait starts again) and every check passed.
 
-- `platformAutomerge: false`: Renovate merges the PR itself. GitHub's auto-merge only waits for
-  the *required* checks, and `undated-age` isn't one.
-- `rebaseWhen: "conflicted"`: a rebase pushes a new commit and restarts the wait, so the branch
-  is only rebased on a conflict.
+**`trusted` and `manual` are each repo's call.** This preset never adds them, so a repo that does
+nothing keeps merging its undated PRs by hand. A repo opts in with one rule, and keeps exceptions
+out with another:
 
-A newer version of the same image pushes a new commit to the PR, so the wait starts again for
-it. Renovate never merges in the run that pushed a commit, and the workflow sets the status
-before Renovate runs, so a PR can't be merged before the status exists. If the status step
-fails, the workflow stops before Renovate runs.
+```json5
+packageRules: [
+  {
+    description: "Undated images: this repo uses each app's own registry, merge them after 7 days",
+    matchDatasources: ["docker"],
+    matchPackageNames: ["/^[^/]+\\.[^/]+\\//", "!/^(docker\\.io|index\\.docker\\.io|registry-1\\.docker\\.io)\\//"],
+    addLabels: ["trusted"],
+  },
+  {
+    description: "Never merged without a review",
+    matchPackageNames: ["ghcr.io/example/app"],
+    addLabels: ["manual"],
+  },
+],
+```
 
-In a grouped PR, Renovate automerges only when every update in it may be automerged: one image
-from an untrusted publisher keeps the whole PR for review. The PR body says which:
-"Automerge: Enabled" or "Disabled by config".
+Use `addLabels`, not `labels`: `labels` replaces the `type/*` labels the merge needs. A repo rule
+with `automerge: false` alone doesn't stop the merge of an undated PR, `manual` does.
 
-The status shows on every `undated` PR, trusted or not, so it also tells you when a hand-merged
-one has had its week. To merge one sooner (an urgent fix), merge it by hand.
+In a grouped PR, Renovate adds the labels of every update in it, so one `manual`, `calver`,
+`database` or `type/major` update keeps the whole PR for review. To merge a PR sooner (an urgent
+fix), merge it by hand.
 
 ## 0.x versions
 
